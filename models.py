@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
 
 
 class CNNLayerNorm(nn.Module):
@@ -91,11 +92,11 @@ class SpeechRecognitionModel(nn.Module):
 
     def forward(self, x):
         x = self.cnn(x)
-        x = self.rescnn_layers(x)
+        x = torch.utils.checkpoint.checkpoint(self.rescnn_layers, x)
         sizes = x.size()
         x = x.view(sizes[0], sizes[1] * sizes[2], sizes[3])  # (batch, feature, time)
         x = x.transpose(1, 2) # (batch, time, feature)
         x = self.fully_connected(x)
-        x = self.birnn_layers(x)
+        x = torch.utils.checkpoint.checkpoint(self.birnn_layers, x)
         x = self.classifier(x)
         return x
